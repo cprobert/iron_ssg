@@ -2,7 +2,9 @@ use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::{self, Value};
 use std::fs;
+use std::fs::create_dir_all;
 use std::io::{self, Read};
+use std::path::Path;
 use std::result::Result;
 
 #[derive(Debug)]
@@ -66,6 +68,13 @@ impl<'a> IronSSG<'a> {
 
         let handlebars = Handlebars::new();
 
+        // Remove existing 'dist' folder
+        if let Err(e) = fs::remove_dir_all("dist") {
+            if config.verbose {
+                eprintln!("Warning: Couldn't remove the 'dist' directory. {}", e);
+            }
+        }
+
         Ok(Self {
             manifest: Vec::new(),
             config,
@@ -81,7 +90,7 @@ impl<'a> IronSSG<'a> {
             view: v["view"].as_str().unwrap_or("").to_string(),
             model: v["model"].as_str().unwrap_or("").to_string(),
             controller: v["controller"].as_str().unwrap_or("").to_string(),
-            path: v["path"].as_str().unwrap_or("/").to_string(),
+            path: v["path"].as_str().unwrap_or("").to_string(),
             slug: v["slug"].as_str().unwrap_or("index").to_string(),
             description: v["description"].as_str().unwrap_or("").to_string(),
         };
@@ -91,15 +100,31 @@ impl<'a> IronSSG<'a> {
     }
 
     pub fn generate_page(&self, manifest: PageManifest) -> Result<(), IronSSGError> {
-        println!("Generating page: {:?}", manifest.view);
+        println!("Generating: {:?}", manifest.view);
 
-        let mut view_content = String::new();
-        let mut file = fs::File::open(&manifest.view)?;
+        let mut view_content: String = String::new();
+        let mut file: fs::File = fs::File::open(&manifest.view)?;
         file.read_to_string(&mut view_content)?;
 
         let output = self.handlebars.render_template(&view_content, &manifest)?;
 
-        println!("Generated content: {}", output);
+        // Prepare the output directory and file name
+        let dir_path = if !manifest.path.is_empty() {
+            format!("dist/{}", manifest.path)
+        } else {
+            "dist".to_string()
+        };
+        let file_path = format!("{}/{}.html", dir_path, manifest.slug);
+
+        // Create the output directory if it doesn't exist
+        if !Path::new(&dir_path).exists() {
+            create_dir_all(&dir_path)?;
+        }
+
+        // Write to the output file
+        fs::write(&file_path, output)?;
+        println!("Generated:  {}", file_path);
+
         Ok(())
     }
 
