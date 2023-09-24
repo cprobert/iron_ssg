@@ -1,6 +1,7 @@
 extern crate json;
 
 mod ironssg;
+
 use ironssg::{IronSSG, IronSSGConfig};
 use std::fs::File;
 use std::io::Read;

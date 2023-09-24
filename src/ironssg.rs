@@ -1,57 +1,22 @@
 extern crate fs_extra;
 mod file_utils;
+mod ironssg_errors;
+mod page_manifest;
 
 use chrono::{Datelike, Utc};
 use handlebars::Handlebars;
+use ironssg_errors::IronSSGError;
 use json;
 use json::JsonValue;
+use page_manifest::PageManifest;
 use serde_json;
 use std::error::Error;
-use std::error::Error as StdError;
-use std::fmt;
 use std::fs;
 use std::fs::create_dir_all;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 use std::result::Result;
-
-#[derive(Debug)]
-pub enum IronSSGError {
-    InvalidJSON(json::Error),
-    FileError(io::Error),
-    RenderError(handlebars::RenderError),
-}
-
-impl fmt::Display for IronSSGError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            IronSSGError::InvalidJSON(err) => write!(f, "Invalid JSON: {}", err),
-            IronSSGError::FileError(err) => write!(f, "File error: {}", err),
-            IronSSGError::RenderError(err) => write!(f, "Rendering error: {}", err),
-        }
-    }
-}
-
-impl StdError for IronSSGError {}
-
-impl From<handlebars::RenderError> for IronSSGError {
-    fn from(err: handlebars::RenderError) -> IronSSGError {
-        IronSSGError::RenderError(err)
-    }
-}
-
-impl From<io::Error> for IronSSGError {
-    fn from(err: io::Error) -> IronSSGError {
-        IronSSGError::FileError(err)
-    }
-}
-
-impl From<json::Error> for IronSSGError {
-    fn from(err: json::Error) -> IronSSGError {
-        IronSSGError::InvalidJSON(err)
-    }
-}
 
 pub struct IronSSGConfig {
     pub dev: bool,
@@ -65,16 +30,6 @@ pub struct IronSSG<'a> {
     pub manifest: Vec<PageManifest>,
     pub config: IronSSGConfig,
     pub handlebars: Handlebars<'a>,
-}
-#[derive(Clone)]
-pub struct PageManifest {
-    pub title: String,
-    pub view_file_path: String,
-    pub model_file_path: String,
-    pub dist_path: String,
-    pub dist_file_path: String,
-    pub view: String,
-    pub model: serde_json::Value,
 }
 
 impl<'a> IronSSG<'a> {
