@@ -4,6 +4,8 @@ use serde_json::{self, Value};
 use std::error::Error;
 use std::fs;
 use std::fs::create_dir_all;
+use std::fs::File;
+// use std::io::prelude::*;
 use std::io::{self, Read};
 use std::path::Path;
 use std::result::Result;
@@ -53,6 +55,7 @@ pub struct PageManifest {
     pub model_file_path: String,
     pub output_file_path: String,
     pub view: String,
+    pub model: Option<Value>,
 }
 
 impl<'a> IronSSG<'a> {
@@ -88,8 +91,8 @@ impl<'a> IronSSG<'a> {
         // Get the required fields
         let title = page["title"].as_str().ok_or("Missing 'title' field")?;
         let view_file_path = page["view"].as_str().ok_or("Missing 'view' field")?;
-        let model_file_path = page["model"].as_str().ok_or("Missing 'model' field")?;
         // Get the optional fields
+        let model_file_path = page["model"].as_str().unwrap_or("").to_string();
         let description = page["description"].as_str().unwrap_or("").to_string();
         let path = page["path"].as_str().unwrap_or("").to_string();
         let slug = page["slug"].as_str().unwrap_or("index").to_string();
@@ -111,17 +114,33 @@ impl<'a> IronSSG<'a> {
         let output_file_path = format!("{}/{}.html", dist_file_path, slug);
 
         // Get the view
-        let mut view_content: String = String::new();
+        let mut view: String = String::new();
         let mut file: fs::File = fs::File::open(view_file_path)?;
-        file.read_to_string(&mut view_content)?;
+        file.read_to_string(&mut view)?;
+
+        // Initialize model as None
+        let mut model: Option<Value> = None;
+
+        // Check if the file has a .json extension
+        if model_file_path.ends_with(".json") {
+            // Open the file
+            let mut file = File::open(&model_file_path)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+
+            // Parse the JSON into a Value
+            let parsed_json: Value = serde_json::from_str(&contents)?;
+            model = Some(parsed_json);
+        }
 
         let manifest = PageManifest {
             title: title.to_string(),
-            description: description,
             view_file_path: view_file_path.to_string(),
             model_file_path: model_file_path.to_string(),
-            output_file_path: output_file_path,
-            view: view_content,
+            description,
+            output_file_path,
+            view,
+            model,
         };
 
         self.manifest.push(manifest);

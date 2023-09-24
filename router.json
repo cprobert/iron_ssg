@@ -5,7 +5,6 @@
     "pages": [
         {
             "view": "views/index.hbs",
-            "model": "index.json",
             "controller": "index.rs",
             "title": "My Page Title",
             "path": "/",
@@ -13,7 +12,7 @@
         },
         {
             "view": "views/about.hbs",
-            "model": "about.json",
+            "model": "models/about.json",
             "controller": "about.rs",
             "title": "About Us",
             "slug": "about"
