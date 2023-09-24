@@ -1,6 +1,7 @@
 use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::{self, Value};
+use std::error::Error;
 use std::fs;
 use std::fs::create_dir_all;
 use std::io::{self, Read};
@@ -35,6 +36,7 @@ impl From<handlebars::RenderError> for IronSSGError {
 pub struct IronSSGConfig {
     pub dev: bool,
     pub verbose: bool,
+    pub clean: bool,
 }
 
 pub struct IronSSG<'a> {
@@ -45,13 +47,12 @@ pub struct IronSSG<'a> {
 
 #[derive(Serialize, Clone)]
 pub struct PageManifest {
-    pub view: String,
-    pub model: String,
-    pub controller: String,
-    pub path: String,
-    pub slug: String,
     pub title: String,
     pub description: String,
+    pub view_file_path: String,
+    pub model_file_path: String,
+    pub output_file_path: String,
+    pub view: String,
 }
 
 impl<'a> IronSSG<'a> {
@@ -59,6 +60,7 @@ impl<'a> IronSSG<'a> {
         let default_config = IronSSGConfig {
             dev: false,
             verbose: false,
+            clean: false,
         };
 
         let config = config.unwrap_or_else(|| {
@@ -68,9 +70,9 @@ impl<'a> IronSSG<'a> {
 
         let handlebars = Handlebars::new();
 
-        // Remove existing 'dist' folder
-        if let Err(e) = fs::remove_dir_all("dist") {
-            if config.verbose {
+        if config.clean {
+            // Remove existing 'dist' folder
+            if let Err(e) = fs::remove_dir_all("dist") {
                 eprintln!("Warning: Couldn't remove the 'dist' directory. {}", e);
             }
         }
@@ -82,17 +84,44 @@ impl<'a> IronSSG<'a> {
         })
     }
 
-    pub fn page(&mut self, json: &str) -> Result<(), IronSSGError> {
-        let v: Value = serde_json::from_str(json)?;
+    pub fn page(&mut self, page: &Value) -> Result<(), Box<dyn Error>> {
+        // Get the required fields
+        let title = page["title"].as_str().ok_or("Missing 'title' field")?;
+        let view_file_path = page["view"].as_str().ok_or("Missing 'view' field")?;
+        let model_file_path = page["model"].as_str().ok_or("Missing 'model' field")?;
+        // Get the optional fields
+        let description = page["description"].as_str().unwrap_or("").to_string();
+        let path = page["path"].as_str().unwrap_or("").to_string();
+        let slug = page["slug"].as_str().unwrap_or("index").to_string();
+        // let controller = page["controller"]
+        //     .as_str()
+        //     .ok_or("Missing 'controller' field")?;
+
+        // Prepare the output directory and file name
+        let dist_file_path = if !path.is_empty() && path != "/" {
+            format!("dist/{}", path.trim_end_matches('/'))
+        } else {
+            "dist".to_string()
+        };
+        // Create the output directory if it doesn't exist
+        if !Path::new(&dist_file_path).exists() {
+            create_dir_all(&dist_file_path)?;
+        }
+
+        let output_file_path = format!("{}/{}.html", dist_file_path, slug);
+
+        // Get the view
+        let mut view_content: String = String::new();
+        let mut file: fs::File = fs::File::open(view_file_path)?;
+        file.read_to_string(&mut view_content)?;
 
         let manifest = PageManifest {
-            title: v["title"].as_str().unwrap_or("").to_string(),
-            view: v["view"].as_str().unwrap_or("").to_string(),
-            model: v["model"].as_str().unwrap_or("").to_string(),
-            controller: v["controller"].as_str().unwrap_or("").to_string(),
-            path: v["path"].as_str().unwrap_or("").to_string(),
-            slug: v["slug"].as_str().unwrap_or("index").to_string(),
-            description: v["description"].as_str().unwrap_or("").to_string(),
+            title: title.to_string(),
+            description: description,
+            view_file_path: view_file_path.to_string(),
+            model_file_path: model_file_path.to_string(),
+            output_file_path: output_file_path,
+            view: view_content,
         };
 
         self.manifest.push(manifest);
@@ -100,31 +129,10 @@ impl<'a> IronSSG<'a> {
     }
 
     pub fn generate_page(&self, manifest: PageManifest) -> Result<(), IronSSGError> {
-        println!("Generating: {:?}", manifest.view);
-
-        let mut view_content: String = String::new();
-        let mut file: fs::File = fs::File::open(&manifest.view)?;
-        file.read_to_string(&mut view_content)?;
-
-        let output = self.handlebars.render_template(&view_content, &manifest)?;
-
-        // Prepare the output directory and file name
-        let dir_path = if !manifest.path.is_empty() {
-            format!("dist/{}", manifest.path)
-        } else {
-            "dist".to_string()
-        };
-        let file_path = format!("{}/{}.html", dir_path, manifest.slug);
-
-        // Create the output directory if it doesn't exist
-        if !Path::new(&dir_path).exists() {
-            create_dir_all(&dir_path)?;
-        }
-
-        // Write to the output file
-        fs::write(&file_path, output)?;
-        println!("Generated:  {}", file_path);
-
+        println!("Generating: {:?}", manifest.view_file_path);
+        let output = self.handlebars.render_template(&manifest.view, &manifest)?;
+        fs::write(&manifest.output_file_path, output)?;
+        println!("Generated:  {}", manifest.output_file_path);
         Ok(())
     }
 

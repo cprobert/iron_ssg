@@ -1,0 +1,23 @@
+{
+    "name": "Your Website Name",
+    "version": "0.01",
+    "authors": ["Author1", "Author2"],
+    "pages": [
+        {
+            "view": "views/index.hbs",
+            "model": "index.json",
+            "controller": "index.rs",
+            "title": "My Page Title",
+            "path": "/",
+            "slug": "index"
+        },
+        {
+            "view": "views/about.hbs",
+            "model": "about.json",
+            "controller": "about.rs",
+            "title": "About Us",
+            "slug": "about"
+        }
+    ],
+    "pageClasses": []
+}
