@@ -1,6 +1,7 @@
+extern crate json;
+
 mod ironssg;
 use ironssg::{IronSSG, IronSSGConfig};
-use serde_json::{self, Value};
 use std::fs::File;
 use std::io::Read;
 
@@ -24,12 +25,18 @@ fn main() {
     let mut data = String::new();
     file.read_to_string(&mut data)
         .expect("Unable to read router.json");
-    let v: Value = serde_json::from_str(&data).expect("Error parsing JSON");
+    let v = match json::parse(&data) {
+        Ok(val) => val,
+        Err(err) => {
+            eprintln!("Error parsing JSON: {:?}", err);
+            std::process::exit(1);
+        }
+    };
 
     // Loop through the Pages array and register each page
-    if let Some(pages) = v["pages"].as_array() {
+    if let json::JsonValue::Array(pages) = &v["pages"] {
         for page in pages {
-            if let Err(e) = iron_ssg.page(page) {
+            if let Err(e) = iron_ssg.page(&page.clone()) {
                 eprintln!("Failed to create page: {:?}", e);
             }
         }

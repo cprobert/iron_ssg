@@ -1,37 +1,52 @@
+use chrono::{Datelike, Utc};
 use handlebars::Handlebars;
-use serde::Serialize;
-use serde_json::{self, Value};
+use json;
+use json::JsonValue;
+use serde_json;
 use std::error::Error;
+use std::error::Error as StdError;
+use std::fmt;
 use std::fs;
 use std::fs::create_dir_all;
 use std::fs::File;
-// use std::io::prelude::*;
 use std::io::{self, Read};
 use std::path::Path;
 use std::result::Result;
 
 #[derive(Debug)]
 pub enum IronSSGError {
-    InvalidJSON(serde_json::Error),
+    InvalidJSON(json::Error),
     FileError(io::Error),
     RenderError(handlebars::RenderError),
 }
 
-impl From<serde_json::Error> for IronSSGError {
-    fn from(err: serde_json::Error) -> Self {
-        IronSSGError::InvalidJSON(err)
+impl fmt::Display for IronSSGError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            IronSSGError::InvalidJSON(err) => write!(f, "Invalid JSON: {}", err),
+            IronSSGError::FileError(err) => write!(f, "File error: {}", err),
+            IronSSGError::RenderError(err) => write!(f, "Rendering error: {}", err),
+        }
+    }
+}
+
+impl StdError for IronSSGError {}
+
+impl From<handlebars::RenderError> for IronSSGError {
+    fn from(err: handlebars::RenderError) -> IronSSGError {
+        IronSSGError::RenderError(err)
     }
 }
 
 impl From<io::Error> for IronSSGError {
-    fn from(err: io::Error) -> Self {
+    fn from(err: io::Error) -> IronSSGError {
         IronSSGError::FileError(err)
     }
 }
 
-impl From<handlebars::RenderError> for IronSSGError {
-    fn from(err: handlebars::RenderError) -> Self {
-        IronSSGError::RenderError(err)
+impl From<json::Error> for IronSSGError {
+    fn from(err: json::Error) -> IronSSGError {
+        IronSSGError::InvalidJSON(err)
     }
 }
 
@@ -46,16 +61,14 @@ pub struct IronSSG<'a> {
     pub config: IronSSGConfig,
     pub handlebars: Handlebars<'a>,
 }
-
-#[derive(Serialize, Clone)]
+#[derive(Clone)]
 pub struct PageManifest {
     pub title: String,
-    pub description: String,
     pub view_file_path: String,
     pub model_file_path: String,
     pub output_file_path: String,
     pub view: String,
-    pub model: Option<Value>,
+    pub model: serde_json::Value,
 }
 
 impl<'a> IronSSG<'a> {
@@ -87,7 +100,7 @@ impl<'a> IronSSG<'a> {
         })
     }
 
-    pub fn page(&mut self, page: &Value) -> Result<(), Box<dyn Error>> {
+    pub fn page(&mut self, page: &JsonValue) -> Result<(), Box<dyn Error>> {
         // Get the required fields
         let title = page["title"].as_str().ok_or("Missing 'title' field")?;
         let view_file_path = page["view"].as_str().ok_or("Missing 'view' field")?;
@@ -113,13 +126,26 @@ impl<'a> IronSSG<'a> {
 
         let output_file_path = format!("{}/{}.html", dist_file_path, slug);
 
-        // Get the view
-        let mut view: String = String::new();
-        let mut file: fs::File = fs::File::open(view_file_path)?;
-        file.read_to_string(&mut view)?;
+        // Try to open the file, map any error to your custom type
+        let mut file = fs::File::open(view_file_path).map_err(|e| {
+            IronSSGError::FileError(io::Error::new(
+                e.kind(),
+                format!("Failed to open view file: {}", view_file_path),
+            ))
+        })?;
 
-        // Initialize model as None
-        let mut model: Option<Value> = None;
+        let mut view: String = String::new();
+
+        // Try to read the file, map any error to your custom type
+        file.read_to_string(&mut view).map_err(|e| {
+            IronSSGError::FileError(io::Error::new(
+                e.kind(),
+                "Failed to read view file into string",
+            ))
+        })?;
+
+        // Initialize model as an empty JSON object
+        let mut model: json::JsonValue = json::object! {};
 
         // Check if the file has a .json extension
         if model_file_path.ends_with(".json") {
@@ -128,28 +154,45 @@ impl<'a> IronSSG<'a> {
             let mut contents = String::new();
             file.read_to_string(&mut contents)?;
 
-            // Parse the JSON into a Value
-            let parsed_json: Value = serde_json::from_str(&contents)?;
-            model = Some(parsed_json);
+            // Parse the JSON into a JsonValue
+            let parsed_json = json::parse(&contents)?;
+            model = parsed_json;
         }
+        // Add new properties to the object
+        model["title"] = json::JsonValue::String(title.to_string());
+        model["description"] = json::JsonValue::String(description);
+
+        // Add nested properties
+        let mut metadata = JsonValue::new_object();
+        metadata["author"] = JsonValue::String("Courtenay Probert".to_string());
+        let current_year = Utc::now().year();
+        metadata["year"] = JsonValue::Number(current_year.into());
+        model["metadata"] = metadata;
+
+        // This is a hack to get a Serializable object for handlebars
+        // json::object is much easier to work with, but it's not Serializable
+        let model_str = model.dump();
+        let model_serde: serde_json::Value = serde_json::from_str(&model_str).unwrap();
 
         let manifest = PageManifest {
             title: title.to_string(),
             view_file_path: view_file_path.to_string(),
             model_file_path: model_file_path.to_string(),
-            description,
             output_file_path,
             view,
-            model,
+            model: model_serde,
         };
 
         self.manifest.push(manifest);
+
         Ok(())
     }
 
     pub fn generate_page(&self, manifest: PageManifest) -> Result<(), IronSSGError> {
         println!("Generating: {:?}", manifest.view_file_path);
-        let output = self.handlebars.render_template(&manifest.view, &manifest)?;
+        let output = self
+            .handlebars
+            .render_template(&manifest.view, &manifest.model)?;
         fs::write(&manifest.output_file_path, output)?;
         println!("Generated:  {}", manifest.output_file_path);
         Ok(())
