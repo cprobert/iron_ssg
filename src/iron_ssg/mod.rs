@@ -75,24 +75,8 @@ impl<'a> IronSSG<'a> {
 
         let dist_file_path = format!("{}/{}.html", dist_path, slug);
 
-        // let mut view: String = String::new();
+        // Get the view file contents
         let view: String = file_utils::read_view_file(view_file_path)?;
-
-        // // Try to open the file, map any error to your custom type
-        // let mut view_file = fs::File::open(view_file_path).map_err(|e| {
-        //     IronSSGError::FileError(io::Error::new(
-        //         e.kind(),
-        //         format!("Failed to open view file: {}", view_file_path),
-        //     ))
-        // })?;
-
-        // // Try to read the file, map any error to your custom type
-        // view_file.read_to_string(&mut view).map_err(|e| {
-        //     IronSSGError::FileError(io::Error::new(
-        //         e.kind(),
-        //         "Failed to read view file into string",
-        //     ))
-        // })?;
 
         // Initialize model as an empty JSON object
         let mut model: json::JsonValue = json::object! {};
