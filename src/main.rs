@@ -10,6 +10,8 @@ fn main() {
         dev: true,
         verbose: true,
         clean: true,
+        dist: "dist".to_string(),
+        public: "./public".to_string(),
     });
 
     let mut iron_ssg = match IronSSG::new(config) {

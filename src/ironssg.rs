@@ -1,4 +1,6 @@
+extern crate fs_extra;
 use chrono::{Datelike, Utc};
+// use fs_extra::dir::CopyOptions;
 use handlebars::Handlebars;
 use json;
 use json::JsonValue;
@@ -54,6 +56,8 @@ pub struct IronSSGConfig {
     pub dev: bool,
     pub verbose: bool,
     pub clean: bool,
+    pub dist: String,
+    pub public: String,
 }
 
 pub struct IronSSG<'a> {
@@ -66,9 +70,28 @@ pub struct PageManifest {
     pub title: String,
     pub view_file_path: String,
     pub model_file_path: String,
-    pub output_file_path: String,
+    pub dist_path: String,
+    pub dist_file_path: String,
     pub view: String,
     pub model: serde_json::Value,
+}
+
+fn copy_folder_contents(dir: &Path, target_dir: &Path) -> io::Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                let target_subdir = target_dir.join(path.file_name().unwrap());
+                fs::create_dir_all(&target_subdir)?;
+                copy_folder_contents(&path, &target_subdir)?;
+            } else if path.is_file() {
+                let target_file_path = target_dir.join(path.file_name().unwrap());
+                fs::copy(&path, &target_file_path)?;
+            }
+        }
+    }
+    Ok(())
 }
 
 impl<'a> IronSSG<'a> {
@@ -77,6 +100,8 @@ impl<'a> IronSSG<'a> {
             dev: false,
             verbose: false,
             clean: false,
+            dist: "dist".to_string(),
+            public: "public".to_string(),
         };
 
         let config = config.unwrap_or_else(|| {
@@ -85,13 +110,6 @@ impl<'a> IronSSG<'a> {
         });
 
         let handlebars = Handlebars::new();
-
-        if config.clean {
-            // Remove existing 'dist' folder
-            if let Err(e) = fs::remove_dir_all("dist") {
-                eprintln!("Warning: Couldn't remove the 'dist' directory. {}", e);
-            }
-        }
 
         Ok(Self {
             manifest: Vec::new(),
@@ -114,17 +132,13 @@ impl<'a> IronSSG<'a> {
         //     .ok_or("Missing 'controller' field")?;
 
         // Prepare the output directory and file name
-        let dist_file_path = if !path.is_empty() && path != "/" {
-            format!("dist/{}", path.trim_end_matches('/'))
+        let dist_path = if !path.is_empty() && path != "/" {
+            format!("{}/{}", self.config.dist, path.trim_end_matches('/'))
         } else {
-            "dist".to_string()
+            self.config.dist.to_string()
         };
-        // Create the output directory if it doesn't exist
-        if !Path::new(&dist_file_path).exists() {
-            create_dir_all(&dist_file_path)?;
-        }
 
-        let output_file_path = format!("{}/{}.html", dist_file_path, slug);
+        let dist_file_path = format!("{}/{}.html", dist_path, slug);
 
         // Try to open the file, map any error to your custom type
         let mut file = fs::File::open(view_file_path).map_err(|e| {
@@ -158,12 +172,13 @@ impl<'a> IronSSG<'a> {
             let parsed_json = json::parse(&contents)?;
             model = parsed_json;
         }
-        // Add new properties to the object
-        model["title"] = json::JsonValue::String(title.to_string());
-        model["description"] = json::JsonValue::String(description);
+        // // Add new properties to the object
+        // model["title"] = json::JsonValue::String(title.to_string());
 
         // Add nested properties
         let mut metadata = JsonValue::new_object();
+        metadata["title"] = json::JsonValue::String(title.to_string());
+        metadata["description"] = json::JsonValue::String(description.to_string());
         metadata["author"] = JsonValue::String("Courtenay Probert".to_string());
         let current_year = Utc::now().year();
         metadata["year"] = JsonValue::Number(current_year.into());
@@ -172,15 +187,16 @@ impl<'a> IronSSG<'a> {
         // This is a hack to get a Serializable object for handlebars
         // json::object is much easier to work with, but it's not Serializable
         let model_str = model.dump();
-        let model_serde: serde_json::Value = serde_json::from_str(&model_str).unwrap();
+        let model_serializable: serde_json::Value = serde_json::from_str(&model_str).unwrap();
 
         let manifest = PageManifest {
             title: title.to_string(),
             view_file_path: view_file_path.to_string(),
             model_file_path: model_file_path.to_string(),
-            output_file_path,
+            dist_path,
+            dist_file_path,
             view,
-            model: model_serde,
+            model: model_serializable,
         };
 
         self.manifest.push(manifest);
@@ -190,15 +206,40 @@ impl<'a> IronSSG<'a> {
 
     pub fn generate_page(&self, manifest: PageManifest) -> Result<(), IronSSGError> {
         println!("Generating: {:?}", manifest.view_file_path);
+        // Create the output directory if it doesn't exist
+        if !Path::new(&manifest.dist_path).exists() {
+            create_dir_all(&manifest.dist_path)?;
+        }
         let output = self
             .handlebars
             .render_template(&manifest.view, &manifest.model)?;
-        fs::write(&manifest.output_file_path, output)?;
-        println!("Generated:  {}", manifest.output_file_path);
+        fs::write(&manifest.dist_file_path, output)?;
+        println!("Generated:  {}", manifest.dist_file_path);
         Ok(())
     }
 
     pub fn generate(&self) -> Result<(), IronSSGError> {
+        if self.config.clean {
+            // Remove existing 'dist' folder
+            if let Err(e) = fs::remove_dir_all("dist") {
+                eprintln!("Warning: Couldn't remove the 'dist' directory. {}", e);
+            }
+        }
+
+        // Copying files from `self.config.public` into `dist` folder
+        println!("Copying public folder: {}", &self.config.public);
+
+        let public_folder = &self.config.public;
+        let dist_folder = "./dist";
+        let public_folder_path = Path::new(&public_folder);
+        let dist_folder_path = Path::new(&dist_folder);
+
+        if !dist_folder_path.exists() {
+            fs::create_dir_all(&dist_folder_path)?;
+        }
+
+        copy_folder_contents(&public_folder_path, &dist_folder_path)?;
+
         for manifest in &self.manifest {
             self.generate_page(manifest.clone())?;
         }
