@@ -1,6 +1,7 @@
 extern crate fs_extra;
+mod file_utils;
+
 use chrono::{Datelike, Utc};
-// use fs_extra::dir::CopyOptions;
 use handlebars::Handlebars;
 use json;
 use json::JsonValue;
@@ -74,24 +75,6 @@ pub struct PageManifest {
     pub dist_file_path: String,
     pub view: String,
     pub model: serde_json::Value,
-}
-
-fn copy_folder_contents(dir: &Path, target_dir: &Path) -> io::Result<()> {
-    if dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                let target_subdir = target_dir.join(path.file_name().unwrap());
-                fs::create_dir_all(&target_subdir)?;
-                copy_folder_contents(&path, &target_subdir)?;
-            } else if path.is_file() {
-                let target_file_path = target_dir.join(path.file_name().unwrap());
-                fs::copy(&path, &target_file_path)?;
-            }
-        }
-    }
-    Ok(())
 }
 
 impl<'a> IronSSG<'a> {
@@ -238,7 +221,7 @@ impl<'a> IronSSG<'a> {
             fs::create_dir_all(&dist_folder_path)?;
         }
 
-        copy_folder_contents(&public_folder_path, &dist_folder_path)?;
+        file_utils::copy_folder_contents(&public_folder_path, &dist_folder_path)?;
 
         for manifest in &self.manifest {
             self.generate_page(manifest.clone())?;
