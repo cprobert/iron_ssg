@@ -1,22 +1,19 @@
-extern crate fs_extra;
-mod file_utils;
-mod ironssg_errors;
-mod page_manifest;
+pub mod errors;
+pub mod file_utils;
+pub mod page_manifest;
 
+// Standard libraries
+use std::{error::Error, fs, fs::create_dir_all, fs::File, io::Read, path::Path, result::Result};
+
+// Third-party libraries
 use chrono::{Datelike, Utc};
 use handlebars::Handlebars;
-use ironssg_errors::IronSSGError;
-use json;
-use json::JsonValue;
-use page_manifest::PageManifest;
+use json::{self, JsonValue};
 use serde_json;
-use std::error::Error;
-use std::fs;
-use std::fs::create_dir_all;
-use std::fs::File;
-use std::io::{self, Read};
-use std::path::Path;
-use std::result::Result;
+
+// Local modules
+use errors::IronSSGError;
+use page_manifest::PageManifest;
 
 pub struct IronSSGConfig {
     pub dev: bool,
@@ -78,23 +75,24 @@ impl<'a> IronSSG<'a> {
 
         let dist_file_path = format!("{}/{}.html", dist_path, slug);
 
-        // Try to open the file, map any error to your custom type
-        let mut file = fs::File::open(view_file_path).map_err(|e| {
-            IronSSGError::FileError(io::Error::new(
-                e.kind(),
-                format!("Failed to open view file: {}", view_file_path),
-            ))
-        })?;
+        // let mut view: String = String::new();
+        let view: String = file_utils::read_view_file(view_file_path)?;
 
-        let mut view: String = String::new();
+        // // Try to open the file, map any error to your custom type
+        // let mut view_file = fs::File::open(view_file_path).map_err(|e| {
+        //     IronSSGError::FileError(io::Error::new(
+        //         e.kind(),
+        //         format!("Failed to open view file: {}", view_file_path),
+        //     ))
+        // })?;
 
-        // Try to read the file, map any error to your custom type
-        file.read_to_string(&mut view).map_err(|e| {
-            IronSSGError::FileError(io::Error::new(
-                e.kind(),
-                "Failed to read view file into string",
-            ))
-        })?;
+        // // Try to read the file, map any error to your custom type
+        // view_file.read_to_string(&mut view).map_err(|e| {
+        //     IronSSGError::FileError(io::Error::new(
+        //         e.kind(),
+        //         "Failed to read view file into string",
+        //     ))
+        // })?;
 
         // Initialize model as an empty JSON object
         let mut model: json::JsonValue = json::object! {};

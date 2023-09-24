@@ -3,5 +3,8 @@
         "chrono",
         "Datelike",
         "ironssg"
+    ],
+    "rust-analyzer.linkedProjects": [
+        ".\\Cargo.toml"
     ]
 }
