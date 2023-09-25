@@ -1,12 +1,20 @@
+extern crate dotenv;
 extern crate json;
 
 mod iron_ssg;
 
+use dotenv::dotenv;
 use iron_ssg::{IronSSG, IronSSGConfig};
+use std::env;
 use std::fs::File;
 use std::io::Read;
 
 fn main() {
+    dotenv().ok(); // This line loads the .env file
+
+    let router = env::var("ROUTER").unwrap_or("router.json".to_string());
+    println!("Router: {}", router);
+
     let config = Some(IronSSGConfig {
         dev: true,
         verbose: true,
@@ -24,7 +32,7 @@ fn main() {
     };
 
     // Read and parse router.json
-    let mut file = File::open("router.json").expect("Unable to open router.json");
+    let mut file = File::open(router).expect("Unable to open router");
     let mut data = String::new();
     file.read_to_string(&mut data)
         .expect("Unable to read router.json");
