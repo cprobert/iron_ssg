@@ -2,6 +2,7 @@
     "cSpell.words": [
         "chrono",
         "Datelike",
+        "initialise",
         "ironssg"
     ],
     "rust-analyzer.linkedProjects": [

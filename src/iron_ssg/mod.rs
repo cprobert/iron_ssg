@@ -9,18 +9,69 @@ use std::{error::Error, fs, fs::create_dir_all, fs::File, io::Read, path::Path, 
 use chrono::{Datelike, Utc};
 use handlebars::Handlebars;
 use json::{self, JsonValue};
+use serde::Deserialize;
 use serde_json;
 
 // Local modules
 use errors::IronSSGError;
 use page_manifest::PageManifest;
 
+#[derive(Deserialize)]
 pub struct IronSSGConfig {
-    pub dev: bool,
-    pub verbose: bool,
-    pub clean: bool,
-    pub dist: String,
-    pub public: String,
+    pub dev: Option<bool>,
+    pub verbose: Option<bool>,
+    pub clean: Option<bool>,
+    pub dist: Option<String>,
+    pub public: Option<String>,
+    pub authors: Vec<String>,
+    pub name: String,
+    pub version: String,
+    pub pages: Vec<IronSSGPage>,
+    pub static_files: Vec<String>,
+}
+
+impl Default for IronSSGConfig {
+    fn default() -> Self {
+        Self {
+            dev: Some(true),
+            verbose: Some(true),
+            clean: Some(false),
+            dist: Some("dist".to_string()),
+            public: Some("public".to_string()),
+            authors: Vec::new(),
+            name: "Terra App".to_string(),
+            version: "0.1.0".to_string(),
+            pages: Vec::new(),
+            static_files: Vec::new(),
+        }
+    }
+}
+
+#[derive(Deserialize, Clone)]
+pub struct IronSSGPage {
+    controller: Option<String>,
+    path: Option<String>,
+    slug: String,
+    title: String,
+    description: Option<String>,
+    view: String,
+    components: Option<Vec<String>>,
+    model: Option<String>,
+}
+
+impl Default for IronSSGPage {
+    fn default() -> Self {
+        Self {
+            controller: None,
+            path: None,
+            slug: "index".to_string(),
+            title: "".to_string(),
+            description: None,
+            view: "".to_string(),
+            components: None,
+            model: None,
+        }
+    }
 }
 
 pub struct IronSSG<'a> {
@@ -30,75 +81,87 @@ pub struct IronSSG<'a> {
 }
 
 impl<'a> IronSSG<'a> {
-    pub fn new(config: Option<IronSSGConfig>) -> Result<Self, IronSSGError> {
-        let default_config = IronSSGConfig {
-            dev: false,
-            verbose: false,
-            clean: false,
-            dist: "dist".to_string(),
-            public: "public".to_string(),
-        };
-
-        let config = config.unwrap_or_else(|| {
-            eprintln!("Warning: No config provided. Using default settings.");
-            default_config
-        });
-
+    pub fn new(config: IronSSGConfig) -> Result<Self, IronSSGError> {
         let handlebars = Handlebars::new();
+        let manifest = Vec::new();
 
-        Ok(Self {
-            manifest: Vec::new(),
+        let mut ssg = Self {
+            manifest,
             config,
             handlebars,
-        })
-    }
-
-    pub fn page(&mut self, page: &JsonValue) -> Result<(), Box<dyn Error>> {
-        // Get the required fields
-        let title = page["title"].as_str().ok_or("Missing 'title' field")?;
-        let view_file_path = page["view"].as_str().ok_or("Missing 'view' field")?;
-        // Get the optional fields
-        let model_file_path = page["model"].as_str().unwrap_or("").to_string();
-        let description = page["description"].as_str().unwrap_or("").to_string();
-        let path = page["path"].as_str().unwrap_or("").to_string();
-        let slug = page["slug"].as_str().unwrap_or("index").to_string();
-        // let controller = page["controller"]
-        //     .as_str()
-        //     .ok_or("Missing 'controller' field")?;
-
-        // Prepare the output directory and file name
-        let dist_path = if !path.is_empty() && path != "/" {
-            format!("{}/{}", self.config.dist, path.trim_end_matches('/'))
-        } else {
-            self.config.dist.to_string()
         };
 
-        let dist_file_path = format!("{}/{}.html", dist_path, slug);
+        // Separate the collection of pages and their processing into two phases
+        let pages = ssg.config.pages.clone();
+        for page in &pages {
+            if let Err(e) = ssg.page(&page) {
+                eprintln!("Failed to create page: {:?}", e);
+            }
+        }
+
+        Ok(ssg)
+    }
+
+    pub fn page(&mut self, page: &IronSSGPage) -> Result<(), Box<dyn Error>> {
+        // Check mandatory fields
+        if page.title.is_empty() {
+            return Err(Box::new(IronSSGError::CustomError(
+                "Missing 'title' field".to_string(),
+            )));
+        }
+        if page.view.is_empty() {
+            return Err(Box::new(IronSSGError::CustomError(
+                "Missing 'view' field".to_string(),
+            )));
+        }
+
+        // Prepare the output directory and file name
+        let dist_path = if !page.path.as_ref().unwrap_or(&"".to_string()).is_empty()
+            && page.path.as_ref().unwrap_or(&"".to_string()) != "/"
+        {
+            format!(
+                "{}/{}",
+                self.config.dist.as_ref().unwrap_or(&"dist".to_string()),
+                page.path
+                    .as_ref()
+                    .unwrap_or(&"".to_string())
+                    .trim_end_matches('/')
+            )
+        } else {
+            self.config
+                .dist
+                .as_ref()
+                .unwrap_or(&"dist".to_string())
+                .to_string()
+        };
+
+        let dist_file_path = format!("{}/{}.html", dist_path, page.slug);
 
         // Get the view file contents
-        let view: String = file_utils::read_view_file(view_file_path)?;
+        let view: String = file_utils::read_view_file(&page.view)?;
 
         // Initialize model as an empty JSON object
         let mut model: json::JsonValue = json::object! {};
 
         // Check if the file has a .json extension
-        if model_file_path.ends_with(".json") {
-            // Open the file
-            let mut file = File::open(&model_file_path)?;
-            let mut contents = String::new();
-            file.read_to_string(&mut contents)?;
+        if let Some(model_path) = &page.model {
+            if model_path.ends_with(".json") {
+                // Open the file
+                let mut file = File::open(model_path)?;
+                let mut contents = String::new();
+                file.read_to_string(&mut contents)?;
 
-            // Parse the JSON into a JsonValue
-            let parsed_json = json::parse(&contents)?;
-            model = parsed_json;
+                // Parse the JSON into a JsonValue
+                let parsed_json = json::parse(&contents)?;
+                model = parsed_json;
+            }
         }
-        // // Add new properties to the object
-        // model["title"] = json::JsonValue::String(title.to_string());
 
         // Add nested properties
         let mut metadata = JsonValue::new_object();
-        metadata["title"] = json::JsonValue::String(title.to_string());
-        metadata["description"] = json::JsonValue::String(description.to_string());
+        metadata["title"] = json::JsonValue::String(page.title.to_string());
+        metadata["description"] =
+            json::JsonValue::String(page.description.clone().unwrap_or_default());
         metadata["author"] = JsonValue::String("Courtenay Probert".to_string());
         let current_year = Utc::now().year();
         metadata["year"] = JsonValue::Number(current_year.into());
@@ -110,9 +173,9 @@ impl<'a> IronSSG<'a> {
         let model_serializable: serde_json::Value = serde_json::from_str(&model_str).unwrap();
 
         let manifest = PageManifest {
-            title: title.to_string(),
-            view_file_path: view_file_path.to_string(),
-            model_file_path: model_file_path.to_string(),
+            title: page.title.to_string(),
+            view_file_path: page.view.to_string(),
+            model_file_path: page.model.clone().unwrap_or_default(),
             dist_path,
             dist_file_path,
             view,
@@ -139,7 +202,7 @@ impl<'a> IronSSG<'a> {
     }
 
     pub fn generate(&self) -> Result<(), IronSSGError> {
-        if self.config.clean {
+        if self.config.clean.unwrap_or_default() {
             // Remove existing 'dist' folder
             if let Err(e) = fs::remove_dir_all("dist") {
                 eprintln!("Warning: Couldn't remove the 'dist' directory. {}", e);
@@ -147,10 +210,11 @@ impl<'a> IronSSG<'a> {
         }
 
         // Copying files from `self.config.public` into `dist` folder
-        println!("Copying public folder: {}", &self.config.public);
+        let public_folder = self.config.public.clone().unwrap_or_default();
+        println!("Copying public folder: {}", &public_folder);
+        let dist_folder = self.config.dist.clone().unwrap_or_default();
+        println!("To: {}", &dist_folder);
 
-        let public_folder = &self.config.public;
-        let dist_folder = "./dist";
         let public_folder_path = Path::new(&public_folder);
         let dist_folder_path = Path::new(&dist_folder);
 

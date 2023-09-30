@@ -15,8 +15,19 @@
             "model": "models/about.json",
             "controller": "about.rs",
             "title": "About Us",
-            "slug": "about"
+            "slug": "about",
+            "components": ["partials/authors.html","partials/me.md"]
         }
     ],
-    "pageClasses": []
+    "pageClasses": [
+        {
+            "view": "courses/course.hbs",
+            "model": "courses",
+            "controller": "course.js",
+            "path": "courses"
+        }
+    ],
+    "static": [
+        "public", "_generated"
+    ]
 }

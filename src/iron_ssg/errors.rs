@@ -9,6 +9,7 @@ pub enum IronSSGError {
     InvalidJSON(json::Error),
     FileError(io::Error),
     RenderError(handlebars::RenderError),
+    CustomError(String),
 }
 
 impl fmt::Display for IronSSGError {
@@ -17,6 +18,7 @@ impl fmt::Display for IronSSGError {
             IronSSGError::InvalidJSON(err) => write!(f, "Invalid JSON: {}", err),
             IronSSGError::FileError(err) => write!(f, "File error: {}", err),
             IronSSGError::RenderError(err) => write!(f, "Rendering error: {}", err),
+            IronSSGError::CustomError(err) => write!(f, "{}", err),
         }
     }
 }
