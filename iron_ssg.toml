@@ -2,7 +2,7 @@ authors = ["Author1", "Author2"]
 name = "Your Website Name"
 version = "0.01"
 # Public files 
-static_assets = ["public", "_generated"]
+static_assets = ["public"]
 verbose = false
 
 [[page]]
