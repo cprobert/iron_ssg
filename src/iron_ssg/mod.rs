@@ -244,9 +244,12 @@ impl<'a> IronSSG<'a> {
     }
 
     pub fn generate_page(&self, manifest: PageManifest) -> Result<(), IronSSGError> {
-        let generating_message =
-            format!("Generating: {:?}", manifest.view_file_path).bright_black();
-        println!("{}", generating_message);
+        if self.config.verbose.unwrap_or_default() {
+            let generating_message =
+                format!("Generating: {:?}", manifest.view_file_path).bright_black();
+            println!("{}", generating_message);
+        }
+
         // Create the output directory if it doesn't exist
         if !Path::new(&manifest.dist_path).exists() {
             create_dir_all(&manifest.dist_path)?;

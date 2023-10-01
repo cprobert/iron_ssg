@@ -1,6 +1,6 @@
 {
   "dev": null,
-  "verbose": null,
+  "verbose": false,
   "clean": null,
   "dist": null,
   "static_assets": [
