@@ -7,9 +7,7 @@ pub mod file_utils;
 pub mod page_manifest;
 
 // Standard libraries
-use std::{
-    error::Error, fs, fs::create_dir_all, fs::File, io::Read, io::Write, path::Path, result::Result,
-};
+use std::{error::Error, fs, fs::create_dir_all, fs::File, io::Read, path::Path, result::Result};
 
 // Third-party libraries
 use chrono::{Datelike, Utc};
@@ -23,27 +21,6 @@ use serde_json;
 use config::{IronSSGConfig, IronSSGPage};
 use errors::IronSSGError;
 use page_manifest::PageManifest;
-
-fn log_config(
-    config_path: &String,
-    config: &IronSSGConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // Serialize the config to a JSON string
-    let config_json = serde_json::to_string_pretty(config)?;
-
-    // Ensure the _logs directory exists
-    if !Path::new("_logs").exists() {
-        std::fs::create_dir("_logs")?;
-    }
-
-    // Open the file for writing
-    let file_path = format!("_logs/{}.json", config_path);
-    let mut file = File::create(file_path)?;
-    // Write the JSON string to the file
-    file.write_all(config_json.as_bytes())?;
-
-    Ok(())
-}
 
 pub struct IronSSG<'a> {
     pub manifest: Vec<PageManifest>,
@@ -71,7 +48,7 @@ impl<'a> IronSSG<'a> {
             .map_err(|e| IronSSGError::CustomError(format!("Deserialization error: {}", e)))?;
 
         if config.logging.unwrap_or_default() {
-            log_config(&config_path.to_string(), &config)?;
+            file_utils::log_config(&config_path.to_string(), &config)?;
         }
 
         let handlebars = Handlebars::new();
@@ -258,7 +235,7 @@ impl<'a> IronSSG<'a> {
         }
 
         if self.config.logging.unwrap_or_default() {
-            self.serialize_manifest()?;
+            file_utils::serialize_manifest(&self.manifest)?;
         }
 
         self.copy_public_folders()?;
@@ -266,14 +243,6 @@ impl<'a> IronSSG<'a> {
         for manifest in &self.manifest {
             self.generate_page(manifest.clone())?;
         }
-        Ok(())
-    }
-
-    #[allow(warnings)]
-    pub fn serialize_manifest(&self) -> Result<(), Box<dyn Error>> {
-        let serialized_manifest = serde_json::to_string(&self.manifest)?;
-        let mut file = File::create("_logs/manifest.json")?;
-        file.write_all(serialized_manifest.as_bytes())?;
         Ok(())
     }
 }

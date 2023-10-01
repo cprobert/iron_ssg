@@ -1,9 +1,6 @@
-use crate::iron_ssg::errors::IronSSGError;
-// use errors::IronSSGError;
-use std::fs;
-use std::io;
-use std::io::Read;
-use std::path::Path; // Adjust this import according to where you place your errors module
+use crate::iron_ssg::{config::IronSSGConfig, errors::IronSSGError, page_manifest::PageManifest};
+
+use std::{error::Error, fs, fs::File, io, io::Read, io::Write, path::Path};
 
 pub fn copy_folder_contents(dir: &Path, target_dir: &Path) -> io::Result<()> {
     if dir.is_dir() {
@@ -43,4 +40,33 @@ pub fn read_view_file(view_file_path: &str) -> Result<String, IronSSGError> {
     })?;
 
     Ok(view)
+}
+
+pub fn log_config(
+    config_path: &String,
+    config: &IronSSGConfig,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Serialize the config to a JSON string
+    let config_json = serde_json::to_string_pretty(config)?;
+
+    // Ensure the _logs directory exists
+    if !Path::new("_logs").exists() {
+        std::fs::create_dir("_logs")?;
+    }
+
+    // Open the file for writing
+    let file_path = format!("_logs/{}.json", config_path);
+    let mut file = File::create(file_path)?;
+    // Write the JSON string to the file
+    file.write_all(config_json.as_bytes())?;
+
+    Ok(())
+}
+
+#[allow(warnings)]
+pub fn serialize_manifest(manifest: &Vec<PageManifest>) -> Result<(), Box<dyn Error>> {
+    let serialized_manifest = serde_json::to_string(&manifest)?;
+    let mut file = File::create("_logs/manifest.json")?;
+    file.write_all(serialized_manifest.as_bytes())?;
+    Ok(())
 }
