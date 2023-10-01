@@ -1,9 +1,9 @@
 authors = ["Author1", "Author2"]
+logging = true
 name = "Your Website Name"
-version = "0.01"
-# Public files 
-static_assets = ["public"]
+static_assets = ["public"] # Public files 
 verbose = false
+version = "0.01"
 
 [[page]]
 controller = "index.rs"

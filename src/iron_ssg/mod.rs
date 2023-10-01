@@ -24,7 +24,7 @@ use page_manifest::PageManifest;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct IronSSGConfig {
-    pub dev: Option<bool>,
+    pub logging: Option<bool>,
     pub verbose: Option<bool>,
     pub clean: Option<bool>,
     pub dist: Option<String>,
@@ -39,7 +39,7 @@ pub struct IronSSGConfig {
 impl Default for IronSSGConfig {
     fn default() -> Self {
         Self {
-            dev: Some(true),
+            logging: Some(false),
             verbose: Some(true),
             clean: Some(false),
             dist: Some("dist".to_string()),
@@ -79,6 +79,27 @@ impl Default for IronSSGPage {
     }
 }
 
+fn log_config(
+    config_path: &String,
+    config: &IronSSGConfig,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Serialize the config to a JSON string
+    let config_json = serde_json::to_string_pretty(config)?;
+
+    // Ensure the _logs directory exists
+    if !Path::new("_logs").exists() {
+        std::fs::create_dir("_logs")?;
+    }
+
+    // Open the file for writing
+    let file_path = format!("_logs/{}.json", config_path);
+    let mut file = File::create(file_path)?;
+    // Write the JSON string to the file
+    file.write_all(config_json.as_bytes())?;
+
+    Ok(())
+}
+
 pub struct IronSSG<'a> {
     pub manifest: Vec<PageManifest>,
     pub config: IronSSGConfig,
@@ -87,17 +108,28 @@ pub struct IronSSG<'a> {
 
 // Constructor
 impl<'a> IronSSG<'a> {
-    pub fn new(config: IronSSGConfig) -> Result<Self, IronSSGError> {
+    pub fn new(config_path: &str) -> Result<Self, IronSSGError> {
+        let mut file = File::open(config_path)
+            .map_err(|_| IronSSGError::CustomError("Unable to open config".to_string()))?;
+        let mut data = String::new();
+        file.read_to_string(&mut data)
+            .map_err(|_| IronSSGError::CustomError("Unable to read config.toml".to_string()))?;
+
+        let config: IronSSGConfig = toml::from_str(&data)
+            .map_err(|e| IronSSGError::CustomError(format!("Deserialization error: {}", e)))?;
+
+        if config.logging.unwrap_or_default() {
+            log_config(&config_path.to_string(), &config)?;
+        }
+
         let handlebars = Handlebars::new();
         let manifest = Vec::new();
 
-        let ssg = Self {
+        Ok(Self {
             manifest,
             config,
             handlebars,
-        };
-
-        Ok(ssg)
+        })
     }
 }
 
@@ -267,7 +299,9 @@ impl<'a> IronSSG<'a> {
             }
         }
 
-        // ssg.serialize_manifest()?;
+        if self.config.logging.unwrap_or_default() {
+            self.serialize_manifest()?;
+        }
 
         self.copy_public_folders()?;
 
