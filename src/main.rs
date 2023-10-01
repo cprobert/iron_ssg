@@ -7,9 +7,7 @@ use std::env;
 
 fn main() {
     dotenv().ok(); // This line loads the .env file
-
     let config_path: String = env::var("CONFIG").unwrap_or("iron_ssg.toml".to_string());
-    println!("Config: {}", config_path);
 
     let mut iron_ssg = match IronSSG::new(&config_path) {
         Ok(ssg) => ssg,

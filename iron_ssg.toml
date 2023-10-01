@@ -1,7 +1,7 @@
 authors = ["Author1", "Author2"]
 logging = true
 name = "Your Website Name"
-static_assets = ["public"] # Public files 
+static_assets = ["public", "nothere"] # Public files 
 verbose = false
 version = "0.01"
 

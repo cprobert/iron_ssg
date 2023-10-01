@@ -109,6 +109,13 @@ pub struct IronSSG<'a> {
 // Constructor
 impl<'a> IronSSG<'a> {
     pub fn new(config_path: &str) -> Result<Self, IronSSGError> {
+        let init_msg = format!(
+            "{} IronSSG with config: {}",
+            "Initializing: ".yellow(),
+            config_path.blue()
+        );
+        println!("{}", init_msg.bright_black());
+
         let mut file = File::open(config_path)
             .map_err(|_| IronSSGError::CustomError("Unable to open config".to_string()))?;
         let mut data = String::new();
@@ -240,18 +247,20 @@ impl<'a> IronSSG<'a> {
                 let public_folder_path = Path::new(&public_folder);
                 if public_folder_path.exists() {
                     file_utils::copy_folder_contents(&public_folder_path, &dist_folder_path)?;
-                    println!(
-                        "Copied static_assets folder: '{}' to: '{}'",
+                    let static_folder_message = format!(
+                        "{} All static_assets in '{}' copied to '{}'",
+                        "Setup: ".yellow(),
                         &public_folder.blue(),
-                        &dist_folder.green()
+                        &dist_folder.blue()
                     );
+                    println!("{}", static_folder_message.bright_black());
                 } else {
                     let static_folder_error = format!(
                         "{} static_assets folder '{}' does not exist, skipping.",
-                        "Note: ".red(),
+                        "Warning: ".bright_magenta(),
                         &public_folder.red()
                     );
-                    eprintln!("{}", &static_folder_error.bright_black());
+                    eprintln!("{}", &static_folder_error);
                 }
             }
         } else {
@@ -276,7 +285,11 @@ impl<'a> IronSSG<'a> {
             .handlebars
             .render_template(&manifest.view, &manifest.model)?;
         fs::write(&manifest.dist_file_path, output)?;
-        println!("Generated:  {}", manifest.dist_file_path.green());
+        println!(
+            "{} {}",
+            "Generated:".bright_black(),
+            manifest.dist_file_path.green()
+        );
         Ok(())
     }
 
