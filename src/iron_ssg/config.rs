@@ -5,7 +5,7 @@ pub struct IronSSGConfig {
     pub logging: Option<bool>,
     pub verbose: Option<bool>,
     pub clean: Option<bool>,
-    pub dist: Option<String>,
+    pub output: Option<String>,
     #[serde(rename = "static_assets")]
     pub static_assets: Option<Vec<String>>,
     pub authors: Vec<String>,
@@ -19,8 +19,8 @@ impl Default for IronSSGConfig {
         Self {
             logging: Some(false),
             verbose: Some(true),
-            clean: Some(false),
-            dist: Some("dist".to_string()),
+            clean: Some(true),
+            output: Some("dist".to_string()),
             static_assets: None,
             authors: Vec::new(),
             name: "IronSSG Website".to_string(),

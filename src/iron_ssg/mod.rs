@@ -83,7 +83,7 @@ impl<'a> IronSSG<'a> {
         {
             format!(
                 "{}/{}",
-                self.config.dist.as_ref().unwrap_or(&"dist".to_string()),
+                self.config.output.as_ref().unwrap_or(&"dist".to_string()),
                 page.path
                     .as_ref()
                     .unwrap_or(&"".to_string())
@@ -91,7 +91,7 @@ impl<'a> IronSSG<'a> {
             )
         } else {
             self.config
-                .dist
+                .output
                 .as_ref()
                 .unwrap_or(&"dist".to_string())
                 .to_string()
@@ -155,7 +155,7 @@ impl<'a> IronSSG<'a> {
     pub fn copy_public_folders(&self) -> Result<(), Box<dyn Error>> {
         let dist_folder = self
             .config
-            .dist
+            .output
             .clone()
             .unwrap_or_else(|| "dist".to_string());
 
@@ -218,8 +218,18 @@ impl<'a> IronSSG<'a> {
     pub fn generate(&mut self) -> Result<(), IronSSGError> {
         if self.config.clean.unwrap_or_default() {
             // Remove existing 'dist' folder
-            if let Err(e) = fs::remove_dir_all("dist") {
-                eprintln!("Warning: Couldn't remove the 'dist' directory. {}", e);
+
+            let dist = self
+                .config
+                .output
+                .clone()
+                .unwrap_or_else(|| "dist".to_string());
+
+            let clean_message =
+                format!("Warning: Couldn't remove the '{}' directory.", &dist).red();
+
+            if let Err(e) = fs::remove_dir_all(&dist) {
+                eprintln!("{} {}", clean_message, e);
             }
         }
 
