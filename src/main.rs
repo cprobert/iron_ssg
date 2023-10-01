@@ -23,18 +23,26 @@ fn main() {
     file.read_to_string(&mut data)
         .expect("Unable to read config.toml");
 
-    let config: IronSSGConfig = toml::from_str(&data).expect("Failed to parse TOML");
+    let config: Result<IronSSGConfig, toml::de::Error> = toml::from_str(&data);
 
-    let iron_ssg = match IronSSG::new(config) {
-        Ok(ssg) => ssg,
+    match config {
+        Ok(config) => {
+            let iron_ssg = match IronSSG::new(config) {
+                Ok(ssg) => ssg,
+                Err(e) => {
+                    eprintln!("Failed to initialise IronSSG: {:?}", e);
+                    std::process::exit(1);
+                }
+            };
+
+            // Generate the pages
+            if let Err(e) = iron_ssg.generate() {
+                eprintln!("Failed to generate pages: {:?}", e);
+            }
+        }
         Err(e) => {
-            eprintln!("Failed to initialise IronSSG: {:?}", e);
+            eprintln!("Failed to parse TOML: {}", e);
             std::process::exit(1);
         }
-    };
-
-    // Generate the pages
-    if let Err(e) = iron_ssg.generate() {
-        eprintln!("Failed to generate pages: {:?}", e);
     }
 }

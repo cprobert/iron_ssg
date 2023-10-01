@@ -3,7 +3,9 @@ pub mod file_utils;
 pub mod page_manifest;
 
 // Standard libraries
-use std::{error::Error, fs, fs::create_dir_all, fs::File, io::Read, path::Path, result::Result};
+use std::{
+    error::Error, fs, fs::create_dir_all, fs::File, io::Read, io::Write, path::Path, result::Result,
+};
 
 // Third-party libraries
 use chrono::{Datelike, Utc};
@@ -26,8 +28,8 @@ pub struct IronSSGConfig {
     pub authors: Vec<String>,
     pub name: String,
     pub version: String,
-    pub pages: Vec<IronSSGPage>,
-    pub static_files: Vec<String>,
+    pub page: Vec<IronSSGPage>,
+    pub static_files: Option<Vec<String>>,
 }
 
 impl Default for IronSSGConfig {
@@ -41,8 +43,8 @@ impl Default for IronSSGConfig {
             authors: Vec::new(),
             name: "Terra App".to_string(),
             version: "0.1.0".to_string(),
-            pages: Vec::new(),
-            static_files: Vec::new(),
+            page: Vec::new(),
+            static_files: None,
         }
     }
 }
@@ -81,6 +83,15 @@ pub struct IronSSG<'a> {
 }
 
 impl<'a> IronSSG<'a> {
+    pub fn serialize_manifest(&self) -> Result<(), Box<dyn Error>> {
+        let serialized_manifest = serde_json::to_string(&self.manifest)?;
+        let mut file = File::create("_logs/manifest.json")?;
+        file.write_all(serialized_manifest.as_bytes())?;
+        Ok(())
+    }
+}
+
+impl<'a> IronSSG<'a> {
     pub fn new(config: IronSSGConfig) -> Result<Self, IronSSGError> {
         let handlebars = Handlebars::new();
         let manifest = Vec::new();
@@ -92,12 +103,17 @@ impl<'a> IronSSG<'a> {
         };
 
         // Separate the collection of pages and their processing into two phases
-        let pages = ssg.config.pages.clone();
+        let pages = ssg.config.page.clone();
         for page in &pages {
+            println!("Controller: {:?}", page.controller);
+            println!("Components: {:?}", page.components);
+
             if let Err(e) = ssg.page(&page) {
                 eprintln!("Failed to create page: {:?}", e);
             }
         }
+
+        // ssg.serialize_manifest()?;
 
         Ok(ssg)
     }
