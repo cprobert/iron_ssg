@@ -37,7 +37,7 @@ fn main() {
                 eprintln!("Failed to log config: {:?}", e);
             }
 
-            let iron_ssg = match IronSSG::new(config) {
+            let mut iron_ssg = match IronSSG::new(config) {
                 Ok(ssg) => ssg,
                 Err(e) => {
                     eprintln!("Failed to initialise IronSSG: {:?}", e);

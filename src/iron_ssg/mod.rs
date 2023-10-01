@@ -91,25 +91,11 @@ impl<'a> IronSSG<'a> {
         let handlebars = Handlebars::new();
         let manifest = Vec::new();
 
-        let mut ssg = Self {
+        let ssg = Self {
             manifest,
             config,
             handlebars,
         };
-
-        // Separate the collection of pages and their processing into two phases
-        let pages = ssg.config.page.clone();
-        for page in &pages {
-            // println!("Controller: {:?}", page.controller);
-            // println!("Components: {:?}", page.components);
-
-            if let Err(e) = ssg.build_page_manifest(&page) {
-                let page_error_message = format!("Failed to create page: {:?}", e).red();
-                eprintln!("{}", page_error_message);
-            }
-        }
-
-        // ssg.serialize_manifest()?;
 
         Ok(ssg)
     }
@@ -262,13 +248,26 @@ impl<'a> IronSSG<'a> {
         Ok(())
     }
 
-    pub fn generate(&self) -> Result<(), IronSSGError> {
+    pub fn generate(&mut self) -> Result<(), IronSSGError> {
         if self.config.clean.unwrap_or_default() {
             // Remove existing 'dist' folder
             if let Err(e) = fs::remove_dir_all("dist") {
                 eprintln!("Warning: Couldn't remove the 'dist' directory. {}", e);
             }
         }
+
+        let pages = self.config.page.clone();
+        for page in &pages {
+            // println!("Controller: {:?}", page.controller);
+            // println!("Components: {:?}", page.components);
+
+            if let Err(e) = self.build_page_manifest(&page) {
+                let page_error_message = format!("Failed to create page: {:?}", e).red();
+                eprintln!("{}", page_error_message);
+            }
+        }
+
+        // ssg.serialize_manifest()?;
 
         self.copy_public_folders()?;
 
