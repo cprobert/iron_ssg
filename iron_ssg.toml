@@ -1,6 +1,8 @@
 authors = ["Author1", "Author2"]
 name = "Your Website Name"
 version = "0.01"
+# Public files 
+static_assets = ["public", "_generated"]
 
 [[page]]
 controller = "index.rs"
@@ -17,10 +19,9 @@ slug = "about"
 title = "About Us"
 view = "views/about.hbs"
 
+# Multi page / page class
 [[pages]]
 controller = "course.js"
 model = "courses"
 path = "courses"
 view = "courses/course.hbs"
-
-static = ["public", "_generated"]

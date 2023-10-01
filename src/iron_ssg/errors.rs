@@ -10,6 +10,7 @@ pub enum IronSSGError {
     FileError(io::Error),
     RenderError(handlebars::RenderError),
     CustomError(String),
+    GenericError(String),
 }
 
 impl fmt::Display for IronSSGError {
@@ -19,6 +20,7 @@ impl fmt::Display for IronSSGError {
             IronSSGError::FileError(err) => write!(f, "File error: {}", err),
             IronSSGError::RenderError(err) => write!(f, "Rendering error: {}", err),
             IronSSGError::CustomError(err) => write!(f, "{}", err),
+            IronSSGError::GenericError(err) => write!(f, "{}", err),
         }
     }
 }
@@ -40,5 +42,12 @@ impl From<io::Error> for IronSSGError {
 impl From<json::Error> for IronSSGError {
     fn from(err: json::Error) -> IronSSGError {
         IronSSGError::InvalidJSON(err)
+    }
+}
+
+// Implement conversion from Box<dyn Error> to IronSSGError
+impl From<Box<dyn StdError>> for IronSSGError {
+    fn from(error: Box<dyn StdError>) -> Self {
+        IronSSGError::GenericError(error.to_string())
     }
 }

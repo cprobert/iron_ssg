@@ -1,0 +1,41 @@
+{
+  "dev": null,
+  "verbose": null,
+  "clean": null,
+  "dist": null,
+  "static_assets": [
+    "public",
+    "_generated"
+  ],
+  "authors": [
+    "Author1",
+    "Author2"
+  ],
+  "name": "Your Website Name",
+  "version": "0.01",
+  "page": [
+    {
+      "controller": "index.rs",
+      "path": "/",
+      "slug": "index",
+      "title": "My Page Title",
+      "description": null,
+      "view": "views/index.hbs",
+      "components": null,
+      "model": null
+    },
+    {
+      "controller": "about.rs",
+      "path": null,
+      "slug": "about",
+      "title": "About Us",
+      "description": null,
+      "view": "views/about.hbs",
+      "components": [
+        "partials/authors.html",
+        "partials/me.md"
+      ],
+      "model": "models/about.json"
+    }
+  ]
+}

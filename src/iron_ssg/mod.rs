@@ -1,3 +1,6 @@
+extern crate colored;
+extern crate serde;
+
 pub mod errors;
 pub mod file_utils;
 pub mod page_manifest;
@@ -9,27 +12,28 @@ use std::{
 
 // Third-party libraries
 use chrono::{Datelike, Utc};
+use colored::*;
 use handlebars::Handlebars;
 use json::{self, JsonValue};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json;
 
 // Local modules
 use errors::IronSSGError;
 use page_manifest::PageManifest;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct IronSSGConfig {
     pub dev: Option<bool>,
     pub verbose: Option<bool>,
     pub clean: Option<bool>,
     pub dist: Option<String>,
-    pub public: Option<String>,
+    #[serde(rename = "static_assets")]
+    pub static_assets: Option<Vec<String>>,
     pub authors: Vec<String>,
     pub name: String,
     pub version: String,
     pub page: Vec<IronSSGPage>,
-    pub static_files: Option<Vec<String>>,
 }
 
 impl Default for IronSSGConfig {
@@ -39,17 +43,16 @@ impl Default for IronSSGConfig {
             verbose: Some(true),
             clean: Some(false),
             dist: Some("dist".to_string()),
-            public: Some("public".to_string()),
+            static_assets: None,
             authors: Vec::new(),
-            name: "Terra App".to_string(),
+            name: "IronSSG Website".to_string(),
             version: "0.1.0".to_string(),
             page: Vec::new(),
-            static_files: None,
         }
     }
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct IronSSGPage {
     controller: Option<String>,
     path: Option<String>,
@@ -82,15 +85,7 @@ pub struct IronSSG<'a> {
     pub handlebars: Handlebars<'a>,
 }
 
-impl<'a> IronSSG<'a> {
-    pub fn serialize_manifest(&self) -> Result<(), Box<dyn Error>> {
-        let serialized_manifest = serde_json::to_string(&self.manifest)?;
-        let mut file = File::create("_logs/manifest.json")?;
-        file.write_all(serialized_manifest.as_bytes())?;
-        Ok(())
-    }
-}
-
+// Constructor
 impl<'a> IronSSG<'a> {
     pub fn new(config: IronSSGConfig) -> Result<Self, IronSSGError> {
         let handlebars = Handlebars::new();
@@ -105,11 +100,12 @@ impl<'a> IronSSG<'a> {
         // Separate the collection of pages and their processing into two phases
         let pages = ssg.config.page.clone();
         for page in &pages {
-            println!("Controller: {:?}", page.controller);
-            println!("Components: {:?}", page.components);
+            // println!("Controller: {:?}", page.controller);
+            // println!("Components: {:?}", page.components);
 
-            if let Err(e) = ssg.page(&page) {
-                eprintln!("Failed to create page: {:?}", e);
+            if let Err(e) = ssg.build_page_manifest(&page) {
+                let page_error_message = format!("Failed to create page: {:?}", e).red();
+                eprintln!("{}", page_error_message);
             }
         }
 
@@ -117,8 +113,11 @@ impl<'a> IronSSG<'a> {
 
         Ok(ssg)
     }
+}
 
-    pub fn page(&mut self, page: &IronSSGPage) -> Result<(), Box<dyn Error>> {
+// Build manifest
+impl<'a> IronSSG<'a> {
+    pub fn build_page_manifest(&mut self, page: &IronSSGPage) -> Result<(), Box<dyn Error>> {
         // Check mandatory fields
         if page.title.is_empty() {
             return Err(Box::new(IronSSGError::CustomError(
@@ -202,9 +201,52 @@ impl<'a> IronSSG<'a> {
 
         Ok(())
     }
+}
+
+// Generators
+impl<'a> IronSSG<'a> {
+    pub fn copy_public_folders(&self) -> Result<(), Box<dyn Error>> {
+        let dist_folder = self
+            .config
+            .dist
+            .clone()
+            .unwrap_or_else(|| "dist".to_string());
+
+        let dist_folder_path = Path::new(&dist_folder);
+        if !dist_folder_path.exists() {
+            fs::create_dir_all(&dist_folder_path)?;
+        }
+
+        if let Some(static_assets) = &self.config.static_assets {
+            for public_folder in static_assets {
+                let public_folder_path = Path::new(&public_folder);
+                if public_folder_path.exists() {
+                    file_utils::copy_folder_contents(&public_folder_path, &dist_folder_path)?;
+                    println!(
+                        "Copied static_assets folder: '{}' to: '{}'",
+                        &public_folder.blue(),
+                        &dist_folder.green()
+                    );
+                } else {
+                    let static_folder_error = format!(
+                        "{} static_assets folder '{}' does not exist, skipping.",
+                        "Note: ".red(),
+                        &public_folder.red()
+                    );
+                    eprintln!("{}", &static_folder_error.bright_black());
+                }
+            }
+        } else {
+            println!("No 'static_assets' folders specified in config.");
+        }
+
+        Ok(())
+    }
 
     pub fn generate_page(&self, manifest: PageManifest) -> Result<(), IronSSGError> {
-        println!("Generating: {:?}", manifest.view_file_path);
+        let generating_message =
+            format!("Generating: {:?}", manifest.view_file_path).bright_black();
+        println!("{}", generating_message);
         // Create the output directory if it doesn't exist
         if !Path::new(&manifest.dist_path).exists() {
             create_dir_all(&manifest.dist_path)?;
@@ -213,7 +255,7 @@ impl<'a> IronSSG<'a> {
             .handlebars
             .render_template(&manifest.view, &manifest.model)?;
         fs::write(&manifest.dist_file_path, output)?;
-        println!("Generated:  {}", manifest.dist_file_path);
+        println!("Generated:  {}", manifest.dist_file_path.green());
         Ok(())
     }
 
@@ -225,24 +267,19 @@ impl<'a> IronSSG<'a> {
             }
         }
 
-        // Copying files from `self.config.public` into `dist` folder
-        let public_folder = self.config.public.clone().unwrap_or_default();
-        println!("Copying public folder: {}", &public_folder);
-        let dist_folder = self.config.dist.clone().unwrap_or_default();
-        println!("To: {}", &dist_folder);
-
-        let public_folder_path = Path::new(&public_folder);
-        let dist_folder_path = Path::new(&dist_folder);
-
-        if !dist_folder_path.exists() {
-            fs::create_dir_all(&dist_folder_path)?;
-        }
-
-        file_utils::copy_folder_contents(&public_folder_path, &dist_folder_path)?;
+        self.copy_public_folders()?;
 
         for manifest in &self.manifest {
             self.generate_page(manifest.clone())?;
         }
+        Ok(())
+    }
+
+    #[allow(warnings)]
+    pub fn serialize_manifest(&self) -> Result<(), Box<dyn Error>> {
+        let serialized_manifest = serde_json::to_string(&self.manifest)?;
+        let mut file = File::create("_logs/manifest.json")?;
+        file.write_all(serialized_manifest.as_bytes())?;
         Ok(())
     }
 }
