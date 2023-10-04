@@ -14,6 +14,7 @@ use std::{error::Error, fs, fs::create_dir_all, fs::File, io::Read, path::Path, 
 // Third-party libraries
 use chrono::{Datelike, Utc};
 use colored::*;
+use handlebars::template;
 use json::{self, JsonValue};
 use serde_json;
 use tera::Tera;
@@ -40,6 +41,7 @@ impl<'a> IronSSG {
         );
         println!("{}", init_msg.bright_black());
 
+        // Lets map the config file to a struct
         let mut file = File::open(config_path)
             .map_err(|_| IronSSGError::CustomError("Unable to open config".to_string()))?;
         let mut data = String::new();
@@ -53,7 +55,13 @@ impl<'a> IronSSG {
             file_utils::log_config(&config_path.to_string(), &config)?;
         }
 
-        let tera_result = Tera::new("a1k9/**/*.{tera,html,md}");
+        // Let's initialize Tera and load up the templates
+        // this is where we might see an error if the templates have any issues
+        // Tera is very unforgiving
+        let template_folder = config.template_folder.clone();
+        let template_glob = format!("{}/**/*.{{tera,html,md}}", template_folder);
+
+        let tera_result = Tera::new(&template_glob);
 
         let tera = match tera_result {
             Ok(t) => t,

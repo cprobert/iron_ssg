@@ -3,6 +3,7 @@ logging = true
 name = "A1K9"
 output = "docs"
 static_assets = ["a1k9/assets"] # Public files 
+template_folder = "a1k9"
 verbose = false
 version = "0.01"
 

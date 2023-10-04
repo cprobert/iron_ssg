@@ -3,6 +3,7 @@ logging = true
 name = "Your Website Name"
 output = "docs"
 static_assets = ["public", "nothere"] # Public files 
+template_folder = "templates"
 verbose = false
 version = "0.01"
 

@@ -17,7 +17,9 @@ fn main() {
     let mut iron_ssg = match IronSSG::new(&config_path) {
         Ok(ssg) => ssg,
         Err(e) => {
-            eprintln!("{} {:?}", "Failed to initialise IronSSG:".red(), e);
+            let error = format!("{:?}", e).bright_black();
+
+            eprintln!("{} {:?}", "Failed to initialise IronSSG:\n".red(), error);
             std::process::exit(1);
         }
     };

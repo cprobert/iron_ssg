@@ -12,6 +12,7 @@ pub struct IronSSGConfig {
     pub name: String,
     pub version: String,
     pub page: Vec<IronSSGPage>,
+    pub template_folder: String,
 }
 
 impl Default for IronSSGConfig {
@@ -26,6 +27,7 @@ impl Default for IronSSGConfig {
             name: "IronSSG Website".to_string(),
             version: "0.1.0".to_string(),
             page: Vec::new(),
+            template_folder: "templates".to_string(),
         }
     }
 }
