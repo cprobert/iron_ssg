@@ -2,7 +2,7 @@ authors = ["Author1", "Author2"]
 logging = true
 name = "A1K9"
 output = "docs"
-static_assets = ["sites/a1k9training/assets"] # Public files 
+static_assets = ["a1k9/assets"] # Public files 
 verbose = false
 version = "0.01"
 
@@ -11,4 +11,4 @@ description = "Gaynor Probert K9 Behaviour and Training - Improving relationship
 path = "/"
 slug = "index"
 title = "Dog Behaviour and Trainer South Wales | A1K9 Training"
-view = "sites/a1k9training/pages/index.hbs"
+view = "pages/index.tera"

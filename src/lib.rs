@@ -16,8 +16,8 @@ use chrono::{Datelike, Utc};
 use colored::*;
 use handlebars::Handlebars;
 use json::{self, JsonValue};
-
 use serde_json;
+use tera::Tera;
 
 // Local modules
 use crate::iron_ssg::config::{IronSSGConfig, IronSSGPage};
@@ -29,6 +29,7 @@ pub struct IronSSG<'a> {
     pub manifest: Vec<PageManifest>,
     pub config: IronSSGConfig,
     pub handlebars: Handlebars<'a>,
+    pub tera: Tera,
 }
 
 // Constructor
@@ -54,6 +55,8 @@ impl<'a> IronSSG<'a> {
             file_utils::log_config(&config_path.to_string(), &config)?;
         }
 
+        let tera = Tera::new("a1k9/**/*.{tera,html}").expect("Failed to load templates");
+
         let handlebars = Handlebars::new();
         let manifest = Vec::new();
 
@@ -61,6 +64,7 @@ impl<'a> IronSSG<'a> {
             manifest,
             config,
             handlebars,
+            tera,
         })
     }
 }
@@ -102,8 +106,8 @@ impl<'a> IronSSG<'a> {
 
         let dist_file_path = format!("{}/{}.html", dist_path, page.slug);
 
-        // Get the view file contents
-        let view: String = file_utils::read_view_file(&page.view)?;
+        // // Get the view file contents
+        // let view: String = file_utils::read_view_file(&page.view)?;
 
         // Initialize model as an empty JSON object
         let mut model: json::JsonValue = json::object! {};
@@ -143,7 +147,6 @@ impl<'a> IronSSG<'a> {
             model_file_path: page.model.clone().unwrap_or_default(),
             dist_path,
             dist_file_path,
-            view,
             model: model_serializable,
         };
 
@@ -206,10 +209,25 @@ impl<'a> IronSSG<'a> {
         if !Path::new(&manifest.dist_path).exists() {
             create_dir_all(&manifest.dist_path)?;
         }
-        let output = self
-            .handlebars
-            .render_template(&manifest.view, &manifest.model)?;
+
+        // let output = self
+        //     .handlebars
+        //     .render_template(&manifest.view, &manifest.model)?;
+
+        // Step 2: Parse JSON to Rust data structure
+        // let parsed_json: Value =
+        //     serde_json::from_str(&manifest.model).expect("Failed to parse JSON");
+
+        // let mut context = tera::Context::new();
+        // context.insert("data", &manifest.model);
+
+        let output = self.tera.render(
+            &manifest.view_file_path,
+            &tera::Context::from_serialize(&manifest.model)?,
+        )?;
+
         fs::write(&manifest.dist_file_path, output)?;
+
         println!(
             "{} {}",
             "Generated:".bright_black(),
@@ -242,8 +260,12 @@ impl<'a> IronSSG<'a> {
             // println!("Components: {:?}", page.components);
 
             if let Err(e) = self.build_page_manifest(&page) {
-                let page_error_message = format!("Failed to create page: {:?}", e).red();
-                eprintln!("{}", page_error_message);
+                let page_error_message = format!("{:?}", e).red();
+                eprintln!(
+                    "{}{}",
+                    "Failed to create page manifest: \n".bright_black(),
+                    page_error_message
+                );
             }
         }
 

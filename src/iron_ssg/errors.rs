@@ -1,11 +1,15 @@
 use handlebars;
-use json; // Make sure the json crate is in your Cargo.toml
+use json;
+use serde_json::Error as JsonError;
 use std::error::Error as StdError;
 use std::fmt;
-use std::io; // Likewise for the handlebars crate
+use std::io;
+use tera::Error as TeraError;
 
 #[derive(Debug)]
 pub enum IronSSGError {
+    TeraError(TeraError),
+    JsonError(JsonError),
     InvalidJSON(json::Error),
     FileError(io::Error),
     RenderError(handlebars::RenderError),
@@ -21,6 +25,8 @@ impl fmt::Display for IronSSGError {
             IronSSGError::RenderError(err) => write!(f, "Rendering error: {}", err),
             IronSSGError::CustomError(err) => write!(f, "{}", err),
             IronSSGError::GenericError(err) => write!(f, "{}", err),
+            IronSSGError::TeraError(err) => write!(f, "Tera error: {}", err),
+            IronSSGError::JsonError(err) => write!(f, "JSON error: {}", err),
         }
     }
 }
@@ -49,5 +55,17 @@ impl From<json::Error> for IronSSGError {
 impl From<Box<dyn StdError>> for IronSSGError {
     fn from(error: Box<dyn StdError>) -> Self {
         IronSSGError::GenericError(error.to_string())
+    }
+}
+
+impl From<TeraError> for IronSSGError {
+    fn from(err: TeraError) -> IronSSGError {
+        IronSSGError::TeraError(err)
+    }
+}
+
+impl From<JsonError> for IronSSGError {
+    fn from(err: JsonError) -> IronSSGError {
+        IronSSGError::JsonError(err)
     }
 }

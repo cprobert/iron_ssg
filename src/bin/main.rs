@@ -1,6 +1,8 @@
+extern crate colored;
 extern crate dotenv;
 extern crate iron_ssg;
 
+use colored::*;
 use dotenv::dotenv;
 use iron_ssg::IronSSG;
 use std::env;
@@ -22,6 +24,6 @@ fn main() {
 
     // Generate the pages
     if let Err(e) = iron_ssg.generate() {
-        eprintln!("Failed to generate pages: {:?}", e);
+        eprintln!("{}{:?}", "Failed to generate pages: \n".red(), e);
     }
 }

@@ -3,7 +3,8 @@
         "chrono",
         "Datelike",
         "initialise",
-        "ironssg"
+        "ironssg",
+        "tera"
     ],
     "rust-analyzer.linkedProjects": [
         ".\\Cargo.toml",
