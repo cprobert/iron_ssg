@@ -1,10 +1,12 @@
 extern crate colored;
 extern crate serde;
 
-pub mod config;
-pub mod errors;
-pub mod file_utils;
-pub mod page_manifest;
+mod iron_ssg {
+    pub mod config;
+    pub mod errors;
+    pub mod file_utils;
+    pub mod page_manifest;
+}
 
 // Standard libraries
 use std::{error::Error, fs, fs::create_dir_all, fs::File, io::Read, path::Path, result::Result};
@@ -18,9 +20,10 @@ use json::{self, JsonValue};
 use serde_json;
 
 // Local modules
-use config::{IronSSGConfig, IronSSGPage};
-use errors::IronSSGError;
-use page_manifest::PageManifest;
+use crate::iron_ssg::config::{IronSSGConfig, IronSSGPage};
+use crate::iron_ssg::errors::IronSSGError;
+use crate::iron_ssg::file_utils;
+use crate::iron_ssg::page_manifest::PageManifest;
 
 pub struct IronSSG<'a> {
     pub manifest: Vec<PageManifest>,

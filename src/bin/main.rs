@@ -1,5 +1,5 @@
 extern crate dotenv;
-mod iron_ssg;
+extern crate iron_ssg;
 
 use dotenv::dotenv;
 use iron_ssg::IronSSG;
