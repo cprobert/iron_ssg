@@ -12,3 +12,11 @@ path = "/"
 slug = "index"
 title = "Dog Behaviour and Trainer South Wales | A1K9 Training"
 view = "pages/index.tera"
+
+[[page]]
+description = "About Gaynor Probert K9 Behaviour and Training"
+model = "a1k9/models/about/index.json"
+path = "/"
+slug = "about"
+title = "Gaynor Probert - My Philosophy"
+view = "pages/about.tera"

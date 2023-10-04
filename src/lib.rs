@@ -14,7 +14,6 @@ use std::{error::Error, fs, fs::create_dir_all, fs::File, io::Read, path::Path, 
 // Third-party libraries
 use chrono::{Datelike, Utc};
 use colored::*;
-use handlebars::Handlebars;
 use json::{self, JsonValue};
 use serde_json;
 use tera::Tera;
@@ -25,15 +24,14 @@ use crate::iron_ssg::errors::IronSSGError;
 use crate::iron_ssg::file_utils;
 use crate::iron_ssg::page_manifest::PageManifest;
 
-pub struct IronSSG<'a> {
+pub struct IronSSG {
     pub manifest: Vec<PageManifest>,
     pub config: IronSSGConfig,
-    pub handlebars: Handlebars<'a>,
     pub tera: Tera,
 }
 
 // Constructor
-impl<'a> IronSSG<'a> {
+impl<'a> IronSSG {
     pub fn new(config_path: &str) -> Result<Self, IronSSGError> {
         let init_msg = format!(
             "{} IronSSG with config: {}",
@@ -55,22 +53,40 @@ impl<'a> IronSSG<'a> {
             file_utils::log_config(&config_path.to_string(), &config)?;
         }
 
-        let tera = Tera::new("a1k9/**/*.{tera,html}").expect("Failed to load templates");
+        let tera_result = Tera::new("a1k9/**/*.{tera,html,md}");
 
-        let handlebars = Handlebars::new();
+        let tera = match tera_result {
+            Ok(t) => t,
+            Err(e) => {
+                let tera_error_message = format!("{:?}", e).bright_black();
+                eprintln!(
+                    "{} {}",
+                    "Failed to initialize Tera templates:\n".red(),
+                    tera_error_message
+                );
+                let mut cause = e.source();
+                while let Some(err) = cause {
+                    eprintln!("{} {}", "Caused by:".yellow(), err);
+                    cause = err.source();
+                }
+                return Err(IronSSGError::CustomError(
+                    "Failed to initialize Tera templates".to_string(),
+                ));
+            }
+        };
+
         let manifest = Vec::new();
 
         Ok(Self {
             manifest,
             config,
-            handlebars,
             tera,
         })
     }
 }
 
 // Build manifest
-impl<'a> IronSSG<'a> {
+impl<'a> IronSSG {
     pub fn build_page_manifest(&mut self, page: &IronSSGPage) -> Result<(), Box<dyn Error>> {
         // Check mandatory fields
         if page.title.is_empty() {
@@ -136,7 +152,7 @@ impl<'a> IronSSG<'a> {
         metadata["year"] = JsonValue::Number(current_year.into());
         model["metadata"] = metadata;
 
-        // This is a hack to get a Serializable object for handlebars
+        // This is a hack to get a Serializable object for the view
         // json::object is much easier to work with, but it's not Serializable
         let model_str = model.dump();
         let model_serializable: serde_json::Value = serde_json::from_str(&model_str).unwrap();
@@ -157,7 +173,7 @@ impl<'a> IronSSG<'a> {
 }
 
 // Generators
-impl<'a> IronSSG<'a> {
+impl<'a> IronSSG {
     pub fn copy_public_folders(&self) -> Result<(), Box<dyn Error>> {
         let dist_folder = self
             .config
@@ -209,10 +225,6 @@ impl<'a> IronSSG<'a> {
         if !Path::new(&manifest.dist_path).exists() {
             create_dir_all(&manifest.dist_path)?;
         }
-
-        // let output = self
-        //     .handlebars
-        //     .render_template(&manifest.view, &manifest.model)?;
 
         // Step 2: Parse JSON to Rust data structure
         // let parsed_json: Value =
