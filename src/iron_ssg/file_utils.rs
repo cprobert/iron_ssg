@@ -1,6 +1,6 @@
-use crate::iron_ssg::{config::IronSSGConfig, errors::IronSSGError, page_manifest::PageManifest};
+use crate::iron_ssg::{config::IronSSGConfig, page_manifest::PageManifest};
 
-use std::{error::Error, fs, fs::File, io, io::Read, io::Write, path::Path};
+use std::{error::Error, fs, fs::File, io, io::Write, path::Path};
 
 pub fn copy_folder_contents(dir: &Path, target_dir: &Path) -> io::Result<()> {
     if dir.is_dir() {
