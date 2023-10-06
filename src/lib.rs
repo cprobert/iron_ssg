@@ -5,10 +5,10 @@ mod ironssg_generators;
 mod ironssg_manifest;
 
 mod iron_ssg {
-    pub mod config;
     pub mod errors;
     pub mod file_utils;
-    pub mod page_manifest;
+    pub mod ironssg_page;
+    pub mod site_manifest;
 }
 
 // Standard libraries
@@ -19,14 +19,14 @@ use colored::*;
 use tera::Tera;
 
 // Local modules
-use crate::iron_ssg::config::IronSSGConfig;
 use crate::iron_ssg::errors::IronSSGError;
 use crate::iron_ssg::file_utils;
-use crate::iron_ssg::page_manifest::PageManifest;
+use crate::iron_ssg::ironssg_page::IronSSGPage;
+use crate::iron_ssg::site_manifest::IronSSGSiteManifest;
 
 pub struct IronSSG {
-    pub manifest: Vec<PageManifest>,
-    pub config: IronSSGConfig,
+    pub manifest: Vec<IronSSGPage>,
+    pub config: IronSSGSiteManifest,
     pub tera: Tera,
 }
 
@@ -47,7 +47,7 @@ impl<'a> IronSSG {
         file.read_to_string(&mut data)
             .map_err(|_| IronSSGError::CustomError("Unable to read config.toml".to_string()))?;
 
-        let config: IronSSGConfig = toml::from_str(&data)
+        let config: IronSSGSiteManifest = toml::from_str(&data)
             .map_err(|e| IronSSGError::CustomError(format!("Deserialization error: {}", e)))?;
 
         if config.logging.unwrap_or_default() {

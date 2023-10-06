@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 #[derive(Clone, Serialize)]
-pub struct PageManifest {
+pub struct IronSSGPage {
     pub title: String,
     pub view_file_path: String,
     pub model_file_path: String,

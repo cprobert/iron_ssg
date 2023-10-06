@@ -7,13 +7,16 @@ use serde_json;
 use std::{error::Error, fs::File, io::Read, result::Result};
 
 // Local modules
-use crate::iron_ssg::config::IronSSGPage;
 use crate::iron_ssg::errors::IronSSGError;
-use crate::iron_ssg::page_manifest::PageManifest;
+use crate::iron_ssg::ironssg_page::IronSSGPage;
+use crate::iron_ssg::site_manifest::IronSSGPageManifest;
 
 // Build manifest
 impl<'a> crate::IronSSG {
-    pub fn build_page_manifest(&mut self, page: &IronSSGPage) -> Result<(), Box<dyn Error>> {
+    pub fn build_page_manifest(
+        &mut self,
+        page: &IronSSGPageManifest,
+    ) -> Result<(), Box<dyn Error>> {
         // Check mandatory fields
         if page.title.is_empty() {
             return Err(Box::new(IronSSGError::CustomError(
@@ -83,7 +86,7 @@ impl<'a> crate::IronSSG {
         let model_str = model.dump();
         let model_serializable: serde_json::Value = serde_json::from_str(&model_str).unwrap();
 
-        let manifest = PageManifest {
+        let manifest = IronSSGPage {
             title: page.title.to_string(),
             view_file_path: page.view.to_string(),
             model_file_path: page.model.clone().unwrap_or_default(),

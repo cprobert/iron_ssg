@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct IronSSGConfig {
+pub struct IronSSGSiteManifest {
     pub logging: Option<bool>,
     pub verbose: Option<bool>,
     pub clean: Option<bool>,
@@ -11,11 +11,11 @@ pub struct IronSSGConfig {
     pub authors: Vec<String>,
     pub name: String,
     pub version: String,
-    pub page: Vec<IronSSGPage>,
+    pub page: Vec<IronSSGPageManifest>,
     pub template_folder: String,
 }
 
-impl Default for IronSSGConfig {
+impl Default for IronSSGSiteManifest {
     fn default() -> Self {
         Self {
             logging: Some(false),
@@ -33,7 +33,7 @@ impl Default for IronSSGConfig {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct IronSSGPage {
+pub struct IronSSGPageManifest {
     pub controller: Option<String>,
     pub path: Option<String>,
     pub slug: String,
@@ -44,7 +44,7 @@ pub struct IronSSGPage {
     pub model: Option<String>,
 }
 
-impl Default for IronSSGPage {
+impl Default for IronSSGPageManifest {
     fn default() -> Self {
         Self {
             controller: None,

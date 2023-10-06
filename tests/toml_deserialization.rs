@@ -1,4 +1,4 @@
-use iron_ssg::IronSSGConfig;
+use iron_ssg::IronSSGSiteManifest;
 use toml;
 
 #[test]

@@ -1,4 +1,4 @@
-use crate::iron_ssg::{config::IronSSGConfig, page_manifest::PageManifest};
+use crate::iron_ssg::{ironssg_page::IronSSGPage, site_manifest::IronSSGSiteManifest};
 
 use std::{error::Error, fs, fs::File, io, io::Write, path::Path};
 
@@ -44,7 +44,7 @@ pub fn copy_folder_contents(dir: &Path, target_dir: &Path) -> io::Result<()> {
 
 pub fn log_config(
     config_path: &String,
-    config: &IronSSGConfig,
+    config: &IronSSGSiteManifest,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Serialize the config to a JSON string
     let config_json = serde_json::to_string_pretty(config)?;
@@ -64,7 +64,7 @@ pub fn log_config(
 }
 
 #[allow(warnings)]
-pub fn serialize_manifest(manifest: &Vec<PageManifest>) -> Result<(), Box<dyn Error>> {
+pub fn serialize_manifest(manifest: &Vec<IronSSGPage>) -> Result<(), Box<dyn Error>> {
     let serialized_manifest = serde_json::to_string(&manifest)?;
     let mut file = File::create("_logs/manifest.json")?;
     file.write_all(serialized_manifest.as_bytes())?;
