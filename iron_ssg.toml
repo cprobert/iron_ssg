@@ -1,0 +1,30 @@
+authors = ["Author1", "Author2"]
+logging = true
+name = "Your Website Name"
+output = "docs"
+static_assets = ["public", "nothere"] # Public files 
+template_folder = "templates"
+verbose = false
+version = "0.01"
+
+[[page]]
+controller = "index.rs"
+path = "/"
+slug = "index"
+title = "My Page Title"
+view = "views/index.hbs"
+
+[[page]]
+components = ["partials/authors.html", "partials/me.md"]
+controller = "about.rs"
+model = "models/about.json"
+slug = "about"
+title = "About Us"
+view = "views/about.hbs"
+
+# Multi page / page class
+[[pages]]
+controller = "course.js"
+model = "courses"
+path = "courses"
+view = "courses/course.hbs"

@@ -1,0 +1,23 @@
+authors = ["Author1", "Author2"]
+logging = true
+name = "A1K9"
+output = "docs"
+static_assets = ["a1k9/assets"] # Public files 
+template_folder = "a1k9"
+verbose = false
+version = "0.01"
+
+[[page]]
+description = "Gaynor Probert K9 Behaviour and Training - Improving relationships between dogs and their owners"
+path = "/"
+slug = "index"
+title = "Dog Behaviour and Trainer South Wales | A1K9 Training"
+view = "pages/index.tera"
+
+[[page]]
+description = "About Gaynor Probert K9 Behaviour and Training"
+model = "a1k9/models/about/index.json"
+path = "/"
+slug = "about"
+title = "Gaynor Probert - My Philosophy"
+view = "pages/about.tera"

@@ -13,6 +13,9 @@ Cargo.lock
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
+# Etherial
+_logs/
+
 # Generated 
 dist/
 docs/
@@ -22,4 +25,3 @@ iron_ssg.exe
 .env
 sites/
 a1k9/
-_logs/

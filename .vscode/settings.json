@@ -2,9 +2,13 @@
     "cSpell.words": [
         "chrono",
         "Datelike",
-        "ironssg"
+        "initialise",
+        "ironssg",
+        "tera"
     ],
     "rust-analyzer.linkedProjects": [
+        ".\\Cargo.toml",
+        ".\\Cargo.toml",
         ".\\Cargo.toml"
     ]
 }
