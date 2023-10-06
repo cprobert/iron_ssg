@@ -1,4 +1,4 @@
-use crate::iron_ssg::{ironssg_page::IronSSGPage, site_manifest::IronSSGSiteManifest};
+use crate::iron_ssg::site_manifest::IronSSGSiteManifest;
 
 use std::{error::Error, fs, fs::File, io, io::Write, path::Path};
 
@@ -64,7 +64,7 @@ pub fn log_config(
 }
 
 #[allow(warnings)]
-pub fn serialize_manifest(manifest: &Vec<IronSSGPage>) -> Result<(), Box<dyn Error>> {
+pub fn serialize_manifest(manifest: &Vec<crate::IronSSGPage>) -> Result<(), Box<dyn Error>> {
     let serialized_manifest = serde_json::to_string(&manifest)?;
     let mut file = File::create("_logs/manifest.json")?;
     file.write_all(serialized_manifest.as_bytes())?;

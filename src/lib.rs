@@ -7,7 +7,6 @@ mod ironssg_manifest;
 mod iron_ssg {
     pub mod errors;
     pub mod file_utils;
-    pub mod ironssg_page;
     pub mod site_manifest;
 }
 
@@ -16,18 +15,28 @@ use std::{error::Error, fs::File, io::Read, result::Result};
 
 // Third-party libraries
 use colored::*;
+use serde::Serialize;
 use tera::Tera;
 
 // Local modules
 use crate::iron_ssg::errors::IronSSGError;
 use crate::iron_ssg::file_utils;
-use crate::iron_ssg::ironssg_page::IronSSGPage;
 use crate::iron_ssg::site_manifest::IronSSGSiteManifest;
 
 pub struct IronSSG {
     pub manifest: Vec<IronSSGPage>,
     pub config: IronSSGSiteManifest,
     pub tera: Tera,
+}
+
+#[derive(Clone, Serialize)]
+pub struct IronSSGPage {
+    pub title: String,
+    pub view_file_path: String,
+    pub model_file_path: String,
+    pub dist_path: String,
+    pub dist_file_path: String,
+    pub model: serde_json::Value,
 }
 
 // Constructor

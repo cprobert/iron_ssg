@@ -9,7 +9,6 @@ use colored::*;
 // Local modules
 use crate::iron_ssg::errors::IronSSGError;
 use crate::iron_ssg::file_utils;
-use crate::iron_ssg::ironssg_page::IronSSGPage;
 
 // Generators
 impl<'a> crate::IronSSG {
@@ -53,7 +52,7 @@ impl<'a> crate::IronSSG {
         Ok(())
     }
 
-    pub fn generate_page(&self, manifest: IronSSGPage) -> Result<(), IronSSGError> {
+    pub fn generate_page(&self, manifest: crate::IronSSGPage) -> Result<(), IronSSGError> {
         if self.config.verbose.unwrap_or_default() {
             let generating_message =
                 format!("Generating: {:?}", manifest.view_file_path).bright_black();
